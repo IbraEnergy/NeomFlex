@@ -3,28 +3,45 @@ import numpy as np
 import pandas as pd
 import pandapower as pp
 import pandapower.networks as pn
+from pathlib import Path
 from typing import Dict, Tuple
 from gym import spaces
 
-class GridEnv(gym.Env):
-    def __init__(self, data_path: str = 'Training.csv'):
+class DistributionGridEnv(gym.Env):
+    def __init__(self, data_path: str | Path | None = None, *, verbose: bool = False):
         """
         Initialize the grid environment with comprehensive monitoring.
-        
+
         Args:
-            data_path (str): Path to CSV file containing demand and solar profiles
+            data_path (str | Path | None): Path to CSV file containing demand and solar
+                profiles. When ``None`` the default training dataset bundled with the
+                repository is used.
+            verbose (bool): When ``True`` emit diagnostic prints during stepping and
+                resetting to help debug experiments.
         """
-        # Load data
+        if data_path is None:
+            data_path = Path(__file__).resolve().parents[2] / "data" / "training_profiles.csv"
+        else:
+            data_path = Path(data_path)
+
+        if not data_path.exists():
+            raise FileNotFoundError(f"Training data not found at {data_path}")
+
+        self.data_path = data_path
+        self.verbose = verbose
+
         # Load data
         self.data = pd.read_csv(data_path)
-        print(f"Loaded data with {len(self.data)} timesteps")  # Debug
+        if self.verbose:
+            print(f"Loaded data with {len(self.data)} timesteps")
         
         self.time_step = 0
         self.current_day = 0
         self.total_days = len(self.data) // 48
-        print(f"Total days in data: {self.total_days}")  # Debug
-        
-        if len(self.data) % 48 != 0:
+        if self.verbose:
+            print(f"Total days in data: {self.total_days}")
+
+        if len(self.data) % 48 != 0 and self.verbose:
             print("WARNING: Data length is not a multiple of 48!")
         self.total_steps = len(self.data)  # Total timesteps available
         self.day_initial_soc = {}  # Store initial SOC for each day
@@ -280,11 +297,13 @@ class GridEnv(gym.Env):
 
 
     def step(self, actions: Dict) -> Tuple:
-        print(f"Step - Current timestep: {self.time_step}, Day: {self.current_day}")  # Debug
+        if self.verbose:
+            print(f"Step - Current timestep: {self.time_step}, Day: {self.current_day}")
         
         # Validate time_step before any operations
         if self.time_step >= len(self.data):
-            print(f"Invalid timestep detected: {self.time_step}, Data length: {len(self.data)}")  # Debug
+            if self.verbose:
+                print(f"Invalid timestep detected: {self.time_step}, Data length: {len(self.data)}")
             obs = self.reset()
             rewards = {a: 0 for a in actions}
             done = {a: True for a in actions}
@@ -482,7 +501,8 @@ class GridEnv(gym.Env):
 
         
     def reset(self):
-        print(f"Reset - Current timestep: {self.time_step}, Day: {self.current_day}")
+        if self.verbose:
+            print(f"Reset - Current timestep: {self.time_step}, Day: {self.current_day}")
         
         if self.voltage_violation_occurred:
             # On voltage violation, go back to start of current day
@@ -504,7 +524,8 @@ class GridEnv(gym.Env):
         
         # Safety check
         if self.time_step >= len(self.data):
-            print(f"Reset safety triggered - Invalid timestep: {self.time_step}")
+            if self.verbose:
+                print(f"Reset safety triggered - Invalid timestep: {self.time_step}")
             self.time_step = 0
             self.current_day = 0
             self.bat_soc = {bus: self.bat_cap / 2 for bus in self.bat_buses}
@@ -518,7 +539,8 @@ class GridEnv(gym.Env):
         self.loss_history = []
         self.action_history = []
         
-        print(f"After reset - Timestep: {self.time_step}, Day: {self.current_day}")
+        if self.verbose:
+            print(f"After reset - Timestep: {self.time_step}, Day: {self.current_day}")
         
         # Reset network state
         initial_load = self.data.iloc[self.time_step]['Demand']

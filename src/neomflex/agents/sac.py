@@ -4,7 +4,7 @@ import shutil
 import random
 from collections import deque
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -234,7 +234,7 @@ class SACAgent:
     #     self.critic2_optimizer.load_state_dict(checkpoint['critic2_optimizer'])
     
     def load(self, filename):
-        checkpoint = torch.load(filename, weights_only=True)  # Add weights_only=True
+        checkpoint = torch.load(filename, map_location=self.device)
         self.actor.load_state_dict(checkpoint['actor'])
         self.critic1.load_state_dict(checkpoint['critic1'])
         self.critic2.load_state_dict(checkpoint['critic2'])
@@ -540,7 +540,7 @@ class Trainer:
             shutil.copy2(self.log_file, os.path.join(results_dir, 'training.log'))
 
 if __name__ == "__main__":
-    from grid_env_14 import GridEnv
+    from neomflex import DistributionGridEnv
     
     # Set random seeds
     random.seed(42)
@@ -548,7 +548,7 @@ if __name__ == "__main__":
     torch.manual_seed(42)
     
     # Create environment
-    env = GridEnv(data_path='Training.csv')
+    env = DistributionGridEnv(data_path='data/training_profiles.csv')
     
     # Create and run trainer
     trainer = Trainer(
