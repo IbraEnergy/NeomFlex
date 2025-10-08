@@ -91,7 +91,9 @@ Each CSV contains half-hourly measurements with columns `Demand` and `Solar`.
 ## Documentation
 
 Additional guidance, design decisions, and experiment notes can be added to the
-`docs/` directory. Start with `docs/architecture.md` to capture high-level ideas.
+`docs/` directory. Start with `docs/architecture.md` to capture high-level ideas,
+and consult `docs/file_guide.md` for a quick reference to where the refactored
+modules and scripts live inside the repository.
 
 ## License
 
